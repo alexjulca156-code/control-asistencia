@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Administrador</title>
+    <link rel="stylesheet" href="css/admin.css">
+    <!-- AQUÍ PEGAS EL CÓDIGO DE LA PWA -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0066cc">
+
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('sw.js')
+            .then(reg => console.log('Service Worker registrado con éxito', reg))
+            .catch(err => console.error('Error al registrar Service Worker', err));
+        });
+      }
+    </script>
+</head>
+<body>
+
+    <div class="header-container">
+        <div class="title-group">
+            <h2>Panel de Administrador - Historial</h2>
+            <button class="btn-agregar" onclick="abrirModal()">+ Gestionar Usuarios</button>
+        </div>
+        <button class="btn-logout" onclick="cerrarSesion()">Cerrar Sesión</button>
+    </div>
+
+    <div class="card">
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Practicante</th>
+                    <th>Carrera</th>
+                    <th>Fecha</th>
+                    <th>Hora Entrada</th>
+                    <th>Hora Salida</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="tablaAdmin">
+                <tr>
+                    <td colspan="8">Cargando registros...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Modal para Agregar/Editar y Ver Lista de Usuarios -->
+    <div id="modalUsuario" class="modal">
+        <div class="modal-content">
+            <h3 id="tituloFormUsuario" style="text-align: center; margin-top: 0;">Nuevo Usuario / Practicante</h3>
+            
+            <input type="hidden" id="usuarioId">
+
+            <div class="form-group">
+                <label for="nombre">Nombre Completo:</label>
+                <input type="text" id="nombre" placeholder="Ej. Juan Perez">
+            </div>
+            
+            <div class="form-group">
+                <label for="correo">Correo Electrónico:</label>
+                <input type="email" id="correo" placeholder="Ej. juanperez52@dicesa.pe">
+            </div>
+
+            <div class="form-group">
+                <label for="contrasena">Contraseña / Clave (Dejar en blanco para mantener la actual al editar):</label>
+                <input type="password" id="contrasena" placeholder="Ej. 26592053">
+            </div>
+
+            <div class="form-group">
+                <label for="rol">Rol:</label>
+                <select id="rol">
+                    <option value="practicante">practicante</option>
+                    <option value="administrador">administrador</option>
+                </select>
+            </div>
+
+            <div id="mensajeModal" style="text-align: center; font-weight: bold; font-size: 13px; margin-bottom: 8px;"></div>
+            <button id="btnGuardarUsuario" class="btn-guardar" onclick="guardarUsuario()">Guardar Usuario</button>
+            <button id="btnCancelarEdicion" class="btn-cancelar-edicion" onclick="limpiarFormulario()">Cancelar Edición</button>
+
+            <hr style="margin: 20px 0;">
+
+            <h4 style="text-align: center; margin-bottom: 10px; color: #333;">Usuarios Registrados en Sistema</h4>
+            <table class="tabla-modal">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nombre</th>
+                        <th>Correo</th>
+                        <th>Rol</th>
+                        <th>Acción</th>
+                    </tr>
+                </thead>
+                <tbody id="listaUsuarios">
+                    <tr>
+                        <td colspan="5">Cargando lista...</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <button class="btn-cerrar" onclick="cerrarModal()">Cerrar</button>
+        </div>
+    </div>
+
+    <script>
+        // Validar sesión
+        const usuarioSesion = localStorage.getItem('usuarioLogueado');
+        if (!usuarioSesion) {
+            window.location.href = 'login.html';
+        } else {
+            const usuario = JSON.parse(usuarioSesion);
+            if (usuario.rol !== 'administrador') {
+                window.location.href = 'Index.html';
+            }
+        }
+
+        function cerrarSesion() {
+            localStorage.removeItem('usuarioLogueado');
+            window.location.href = 'login.html';
+        }
+
+        async function abrirModal() {
+            document.getElementById('modalUsuario').style.display = 'flex';
+            document.getElementById('mensajeModal').innerText = '';
+            limpiarFormulario();
+            await cargarListaUsuarios();
+        }
+
+        function cerrarModal() {
+            document.getElementById('modalUsuario').style.display = 'none';
+            limpiarFormulario();
+        }
+
+        function limpiarFormulario() {
+            document.getElementById('usuarioId').value = '';
+            document.getElementById('nombre').value = '';
+            document.getElementById('correo').value = '';
+            document.getElementById('contrasena').value = '';
+            document.getElementById('rol').value = 'practicante';
+            document.getElementById('tituloFormUsuario').innerText = 'Nuevo Usuario / Practicante';
+            document.getElementById('btnGuardarUsuario').innerText = 'Guardar Usuario';
+            document.getElementById('btnCancelarEdicion').style.display = 'none';
+            document.getElementById('mensajeModal').innerText = '';
+        }
+
+        async function cargarHistorialAdmin() {
+            try {
+                const res = await fetch('/api/asistencias');
+                const datos = await res.json();
+                const tbody = document.getElementById('tablaAdmin');
+                tbody.innerHTML = '';
+
+                if (!Array.isArray(datos) || datos.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="8">No hay registros de asistencia</td></tr>';
+                    return;
+                }
+
+                datos.forEach(reg => {
+                    const fechaFormateada = reg.fecha ? reg.fecha.split('T')[0] : '-';
+                    const horaSalida = reg.hora_salida ? reg.hora_salida : '-';
+
+                    const fila = `
+                        <tr>
+                            <td>${reg.id}</td>
+                            <td>${reg.nombre} ${reg.apellido || ''}</td>
+                            <td>${reg.carrera || '-'}</td>
+                            <td>${fechaFormateada}</td>
+                            <td>${reg.hora_entrada}</td>
+                            <td>${horaSalida}</td>
+                            <td>${reg.estado}</td>
+                            <td>
+                                <button class="btn-eliminar" onclick="eliminarRegistro(${reg.id})">Eliminar</button>
+                            </td>
+                        </tr>
+                    `;
+                    tbody.innerHTML += fila;
+                });
+            } catch (error) {
+                console.error("Error al cargar historial:", error);
+            }
+        }
+
+        async function cargarListaUsuarios() {
+            const tbody = document.getElementById('listaUsuarios');
+            try {
+                const res = await fetch('/api/usuarios');
+                if (!res.ok) {
+                    tbody.innerHTML = '<tr><td colspan="5" style="color:red;">Error al obtener usuarios</td></tr>';
+                    return;
+                }
+
+                const datos = await res.json();
+                tbody.innerHTML = '';
+
+                if (!Array.isArray(datos) || datos.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5">No hay usuarios registrados</td></tr>';
+                    return;
+                }
+
+                datos.forEach(u => {
+                    const uJSON = JSON.stringify(u).replace(/"/g, '&quot;');
+                    const fila = `
+                        <tr>
+                            <td><b>${u.id}</b></td>
+                            <td>${u.nombre || '-'}</td>
+                            <td>${u.correo || '-'}</td>
+                            <td>${u.rol || '-'}</td>
+                            <td>
+                                <button class="btn-editar" style="padding:2px 6px; font-size:11px;" onclick="prepararEdicion(${uJSON})">Editar</button>
+                                <button class="btn-eliminar" style="padding:2px 6px; font-size:11px;" onclick="eliminarUsuario(${u.id})">Borrar</button>
+                            </td>
+                        </tr>
+                    `;
+                    tbody.innerHTML += fila;
+                });
+            } catch (error) {
+                console.error("Error de conexión:", error);
+                tbody.innerHTML = '<tr><td colspan="5" style="color:red;">Error de conexión con el servidor</td></tr>';
+            }
+        }
+
+        function prepararEdicion(u) {
+            document.getElementById('usuarioId').value = u.id;
+            document.getElementById('nombre').value = u.nombre || '';
+            document.getElementById('correo').value = u.correo || '';
+            document.getElementById('contrasena').value = ''; // Se deja en blanco deliberadamente
+            document.getElementById('rol').value = u.rol || 'practicante';
+
+            document.getElementById('tituloFormUsuario').innerText = `Editar Usuario (ID: ${u.id})`;
+            document.getElementById('btnGuardarUsuario').innerText = 'Actualizar Usuario';
+            document.getElementById('btnCancelarEdicion').style.display = 'block';
+            document.getElementById('mensajeModal').innerText = '';
+        }
+
+        async function guardarUsuario() {
+            const id = document.getElementById('usuarioId').value;
+            const nombre = document.getElementById('nombre').value.trim();
+            const correo = document.getElementById('correo').value.trim();
+            const contrasena = document.getElementById('contrasena').value.trim();
+            const rol = document.getElementById('rol').value;
+            const msgDiv = document.getElementById('mensajeModal');
+
+            if (!nombre || !correo || !rol) {
+                msgDiv.style.color = 'red';
+                msgDiv.innerText = 'El nombre, correo y rol son obligatorios';
+                return;
+            }
+
+            if (!id && !contrasena) {
+                msgDiv.style.color = 'red';
+                msgDiv.innerText = 'Debes ingresar una contraseña para el nuevo usuario';
+                return;
+            }
+
+            const url = id ? `/api/usuarios/${id}` : '/api/usuarios';
+            const metodo = id ? 'PUT' : 'POST';
+
+            try {
+                const res = await fetch(url, {
+                    method: metodo,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nombre, correo, contrasena, rol })
+                });
+
+                const data = await res.json();
+
+                if (res.ok) {
+                    msgDiv.style.color = 'green';
+                    msgDiv.innerText = id ? 'Usuario actualizado correctamente' : `Usuario creado con éxito (ID: ${data.id})`;
+                    limpiarFormulario();
+                    await cargarListaUsuarios();
+                } else {
+                    msgDiv.style.color = 'red';
+                    msgDiv.innerText = data.mensaje || 'Error al procesar';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                msgDiv.style.color = 'red';
+                msgDiv.innerText = 'Error de conexión';
+            }
+        }
+
+        async function eliminarUsuario(id) {
+            if (!confirm(`¿Eliminar al usuario con ID ${id}?`)) return;
+
+            try {
+                const res = await fetch(`/api/usuarios/${id}`, { method: 'DELETE' });
+                if (res.ok) {
+                    await cargarListaUsuarios();
+                } else {
+                    alert('No se pudo eliminar el usuario');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        async function eliminarRegistro(id) {
+            if (!confirm('¿Seguro que deseas eliminar este registro de asistencia?')) return;
+
+            try {
+                const res = await fetch(`/api/asistencias/${id}`, { method: 'DELETE' });
+                if (res.ok) {
+                    cargarHistorialAdmin();
+                } else {
+                    alert('No se pudo eliminar el registro');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        cargarHistorialAdmin();
+    </script>
+</body>
+</html>

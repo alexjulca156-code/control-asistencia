@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Marcar Asistencia - Practicante</title>
+    <link rel="stylesheet" href="css/Index.css">
+    <!-- AQUÍ PEGAS EL CÓDIGO DE LA PWA -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0066cc">
+
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('sw.js')
+            .then(reg => console.log('Service Worker registrado con éxito', reg))
+            .catch(err => console.error('Error al registrar Service Worker', err));
+        });
+      }
+    </script>
+</head>
+<body>
+
+    <div class="saludo-header">
+        <span id="saludoUsuario" style="font-weight: bold; color: #333; font-size: 18px;"></span>
+    </div>
+
+    <h2>Control de Asistencia</h2>
+
+    <div class="card">
+        <h3>Marcar Asistencia</h3>
+        <form id="formAsistencia">
+            <div class="form-group">
+                <label for="practicante_id">ID del Practicante:</label>
+                <input type="number" id="practicante_id" placeholder="Ej. 1" required>
+            </div>
+
+            <div class="form-group">
+                <label for="hora">Hora Actual (Servidor):</label>
+                <input type="time" id="hora" readonly>
+            </div>
+
+            <button type="button" class="btn-entrada" onclick="registrarEntrada()">Registrar Entrada</button>
+            <button type="button" class="btn-salida" onclick="registrarSalida()">Registrar Salida</button>
+            <button type="button" class="btn-historial" onclick="toggleHistorial()">Ver Historial</button>
+        </form>
+
+        <div id="mensaje"></div>
+
+        <!-- Sección de Historial -->
+        <div id="seccionHistorial" class="historial-box">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Entrada</th>
+                        <th>Salida</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody id="tablaHistorial">
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Botón Cerrar Sesión al pie -->
+        <button class="btn-logout" onclick="cerrarSesion()">Cerrar Sesión</button>
+    </div>
+
+    <script>
+        const usuarioSesion = localStorage.getItem('usuarioLogueado');
+        if (!usuarioSesion) {
+            window.location.href = 'login.html';
+        } else {
+            const usuario = JSON.parse(usuarioSesion);
+            document.getElementById('saludoUsuario').innerText = `Hola, ${usuario.nombre || usuario.correo}`;
+        }
+
+        function cerrarSesion() {
+            localStorage.removeItem('usuarioLogueado');
+            window.location.href = 'login.html';
+        }
+
+        function actualizarReloj() {
+            const hoy = new Date();
+            const horas = String(hoy.getHours()).padStart(2, '0');
+            const minutos = String(hoy.getMinutes()).padStart(2, '0');
+            document.getElementById('hora').value = `${horas}:${minutos}`;
+        }
+        actualizarReloj();
+        setInterval(actualizarReloj, 1000);
+
+        async function registrarEntrada() {
+            const practicante_id = document.getElementById('practicante_id').value;
+
+            if (!practicante_id) {
+                alert('Ingresa el ID del practicante');
+                return;
+            }
+
+            const res = await fetch('/api/asistencia', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ practicante_id })
+            });
+
+            const data = await res.json();
+            mostrarMensaje(data.mensaje, res.ok);
+            if (res.ok) cargarHistorial();
+        }
+
+        async function registrarSalida() {
+            const practicante_id = document.getElementById('practicante_id').value;
+
+            if (!practicante_id) {
+                alert('Ingresa el ID del practicante');
+                return;
+            }
+
+            const res = await fetch('/api/asistencia/salida', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ practicante_id })
+            });
+
+            const data = await res.json();
+            mostrarMensaje(data.mensaje, res.ok);
+            if (res.ok) cargarHistorial();
+        }
+
+        async function toggleHistorial() {
+            const cajaHistorial = document.getElementById('seccionHistorial');
+            if (cajaHistorial.style.display === 'block') {
+                cajaHistorial.style.display = 'none';
+            } else {
+                cajaHistorial.style.display = 'block';
+                await cargarHistorial();
+            }
+        }
+
+        async function cargarHistorial() {
+            const practicante_id = document.getElementById('practicante_id').value;
+            if (!practicante_id) {
+                alert('Ingresa tu ID de practicante para consultar el historial');
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/asistencias');
+                const datos = await res.json();
+                
+                const tbody = document.getElementById('tablaHistorial');
+                tbody.innerHTML = '';
+
+                // Filtrar asegurando la comparación numérica con practicante_id
+                const misAsistencias = datos.filter(item => Number(item.practicante_id) === Number(practicante_id));
+
+                if (!Array.isArray(misAsistencias) || misAsistencias.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4">Sin registros</td></tr>';
+                    return;
+                }
+
+                misAsistencias.forEach(reg => {
+                    const fechaFormateada = reg.fecha ? reg.fecha.split('T')[0] : '-';
+                    const horaSalida = reg.hora_salida ? reg.hora_salida : '-';
+
+                    const fila = `
+                        <tr>
+                            <td>${fechaFormateada}</td>
+                            <td>${reg.hora_entrada}</td>
+                            <td>${horaSalida}</td>
+                            <td>${reg.estado}</td>
+                        </tr>
+                    `;
+                    tbody.innerHTML += fila;
+                });
+            } catch (error) {
+                console.error("Error al obtener historial:", error);
+            }
+        }
+
+        function mostrarMensaje(txt, exito) {
+            const div = document.getElementById('mensaje');
+            div.style.color = exito ? 'green' : 'red';
+            div.innerText = txt;
+        }
+    </script>
+</body>
+</html>

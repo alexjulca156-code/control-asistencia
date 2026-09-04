@@ -1,0 +1,233 @@
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f6f9;
+    margin: 0;
+    padding: 15px;
+    box-sizing: border-box;
+}
+
+.header-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    max-width: 1000px;
+    margin: 0 auto 20px auto;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.title-group {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+h2 {
+    margin: 0;
+    color: #333;
+}
+
+.btn-agregar {
+    background-color: #28a745;
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 14px;
+}
+
+.btn-agregar:hover {
+    background-color: #218838;
+}
+
+.btn-logout {
+    background-color: #6c757d;
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 14px;
+}
+
+.card {
+    background: #ffffff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    max-width: 1000px;
+    margin: 0 auto;
+    overflow-x: auto; /* Permite scroll horizontal en tablas extensas */
+    box-sizing: border-box;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 600px; /* Garantiza que la tabla mantenga legibilidad en pantallas pequeñas */
+}
+
+th, td {
+    border: 1px solid #0066cc;
+    padding: 10px;
+    text-align: center;
+}
+
+th {
+    background-color: #0066cc;
+    color: white;
+}
+
+.btn-eliminar {
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 13px;
+}
+
+.btn-editar {
+    background-color: #ffc107;
+    color: #212529;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-weight: bold;
+    margin-right: 4px;
+    font-size: 13px;
+}
+
+/* Modal para Gestión de Usuarios */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+    justify-content: center;
+    align-items: center;
+    z-index: 20;
+    padding: 15px;
+    box-sizing: border-box;
+}
+
+.modal-content {
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    width: 100%;
+    max-width: 580px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    box-sizing: border-box;
+}
+
+.form-group {
+    margin-bottom: 12px;
+}
+
+label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    font-size: 14px;
+    color: #555;
+}
+
+input, select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+    font-size: 15px;
+}
+
+.btn-guardar {
+    background-color: #28a745;
+    color: white;
+    border: none;
+    padding: 12px;
+    border-radius: 5px;
+    cursor: pointer;
+    width: 100%;
+    font-weight: bold;
+    margin-top: 10px;
+    font-size: 15px;
+}
+
+.btn-cancelar-edicion {
+    background-color: #6c757d;
+    color: white;
+    border: none;
+    padding: 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    width: 100%;
+    font-weight: bold;
+    margin-top: 5px;
+    display: none;
+    font-size: 15px;
+}
+
+.btn-cerrar {
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    padding: 12px;
+    border-radius: 5px;
+    cursor: pointer;
+    width: 100%;
+    font-weight: bold;
+    margin-top: 10px;
+    font-size: 15px;
+}
+
+.tabla-modal {
+    margin-top: 15px;
+    font-size: 12px;
+    display: block;
+    overflow-x: auto;
+}
+
+.tabla-modal table {
+    min-width: 450px;
+}
+
+.tabla-modal th {
+    background-color: #17a2b8;
+    border-color: #17a2b8;
+}
+
+.tabla-modal td {
+    border-color: #ddd;
+    padding: 6px;
+}
+
+/* Ajustes adicionales para móviles */
+@media (max-width: 600px) {
+    .header-container {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .title-group {
+        justify-content: space-between;
+        width: 100%;
+    }
+
+    .btn-logout {
+        width: 100%;
+        margin-top: 5px;
+    }
+}

@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iniciar Sesión - Control de Asistencia</title>
+    <link rel="stylesheet" href="css/login.css">
+    <!-- AQUÍ PEGAS EL CÓDIGO DE LA PWA -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0066cc">
+
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('sw.js')
+            .then(reg => console.log('Service Worker registrado con éxito', reg))
+            .catch(err => console.error('Error al registrar Service Worker', err));
+        });
+      }
+    </script>
+</head>
+<body>
+
+    <div class="login-card">
+        <!-- Opciones de 3 puntos -->
+        <div class="menu-container">
+            <button class="dots-btn" onclick="toggleMenu()">&#8942;</button>
+            <div id="dropdownMenu" class="dropdown-menu">
+                <a href="#" onclick="abrirModal()">Cambiar Contraseña</a>
+            </div>
+        </div>
+
+        <h2>Iniciar Sesión</h2>
+        <form id="formLogin">
+            <div class="form-group">
+                <label for="correo">Correo Electrónico:</label>
+                <input type="email" id="correo" placeholder="correo@ejemplo.com" required>
+            </div>
+            <div class="form-group">
+                <label for="contrasena">Contraseña:</label>
+                <input type="password" id="contrasena" placeholder="******" required>
+            </div>
+            <button type="button" class="btn-ingresar" onclick="iniciarSesion()">Ingresar</button>
+        </form>
+        <div id="mensaje"></div>
+    </div>
+
+    <!-- Modal para Cambiar Contraseña -->
+    <div id="modalCambio" class="modal">
+        <div class="modal-content">
+            <h3 style="text-align: center; margin-top: 0;">Cambiar Contraseña</h3>
+            <div class="form-group">
+                <label for="correoCambio">Correo Electrónico:</label>
+                <input type="email" id="correoCambio" placeholder="correo@ejemplo.com">
+            </div>
+            <div class="form-group">
+                <label for="claveActual">Contraseña Actual:</label>
+                <input type="password" id="claveActual" placeholder="******">
+            </div>
+            <div class="form-group">
+                <label for="claveNueva">Nueva Contraseña:</label>
+                <input type="password" id="claveNueva" placeholder="******">
+            </div>
+            <div id="mensajeCambio" style="margin-bottom: 10px; text-align: center; font-weight: bold; font-size: 13px;"></div>
+            <button type="button" class="btn-cambiar" onclick="cambiarContrasena()">Guardar Cambio</button>
+            <button type="button" class="btn-cancelar" onclick="cerrarModal()">Cancelar</button>
+        </div>
+    </div>
+
+    <script>
+        function toggleMenu() {
+            const menu = document.getElementById('dropdownMenu');
+            menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+        }
+
+        // Cerrar menú si hace clic fuera
+        window.onclick = function(event) {
+            if (!event.target.matches('.dots-btn')) {
+                const menu = document.getElementById('dropdownMenu');
+                if (menu && menu.style.display === 'block') {
+                    menu.style.display = 'none';
+                }
+            }
+        }
+
+        function abrirModal() {
+            document.getElementById('modalCambio').style.display = 'flex';
+            document.getElementById('mensajeCambio').innerText = '';
+        }
+
+        function cerrarModal() {
+            document.getElementById('modalCambio').style.display = 'none';
+        }
+
+        async function iniciarSesion() {
+            const correo = document.getElementById('correo').value;
+            const contrasena = document.getElementById('contrasena').value;
+
+            if (!correo || !contrasena) {
+                document.getElementById('mensaje').innerText = 'Completa todos los campos';
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ correo, contrasena })
+                });
+
+                const data = await res.json();
+
+                if (res.ok) {
+                    localStorage.setItem('usuarioLogueado', JSON.stringify(data.usuario));
+                    if (data.usuario.rol === 'administrador') {
+                        window.location.href = 'admin.html';
+                    } else {
+                        window.location.href = 'Index.html';
+                    }
+                } else {
+                    document.getElementById('mensaje').innerText = data.mensaje || 'Credenciales incorrectas';
+                }
+            } catch (error) {
+                console.error('Error al iniciar sesión:', error);
+                document.getElementById('mensaje').innerText = 'Error al conectar con el servidor';
+            }
+        }
+
+        async function cambiarContrasena() {
+            const correo = document.getElementById('correoCambio').value;
+            const claveActual = document.getElementById('claveActual').value;
+            const claveNueva = document.getElementById('claveNueva').value;
+            const divMensaje = document.getElementById('mensajeCambio');
+
+            if (!correo || !claveActual || !claveNueva) {
+                divMensaje.style.color = 'red';
+                divMensaje.innerText = 'Completa todos los campos';
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/cambiar-password', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ correo, claveActual, claveNueva })
+                });
+
+                const data = await res.json();
+
+                if (res.ok) {
+                    divMensaje.style.color = 'green';
+                    divMensaje.innerText = data.mensaje;
+                    setTimeout(() => {
+                        cerrarModal();
+                        document.getElementById('correoCambio').value = '';
+                        document.getElementById('claveActual').value = '';
+                        document.getElementById('claveNueva').value = '';
+                    }, 1500);
+                } else {
+                    divMensaje.style.color = 'red';
+                    divMensaje.innerText = data.mensaje;
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                divMensaje.style.color = 'red';
+                divMensaje.innerText = 'Error al conectar con el servidor';
+            }
+        }
+    </script>
+</body>
+</html>

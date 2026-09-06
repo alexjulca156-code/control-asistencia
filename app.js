@@ -10,8 +10,9 @@ app.use(cors());
 app.use(express.static('public'));
 
 // Configuración de la conexión a MySQL en Clever Cloud
+// Configuración de la conexión a MySQL en Clever Cloud por IP directa
 const db = mysql.createPool({
-    host: process.env.DB_HOST || 'b1wvfuuu9bbjop29c51h-mysql.services.clever-cloud.com',
+    host: process.env.DB_HOST || '185.42.117.110',
     user: process.env.DB_USER || 'uitp6eatsuspnyq6',
     password: process.env.DB_PASSWORD || 't0TDFd2mBCsv3rFxhDxK',
     database: process.env.DB_NAME || 'b1wvfuuu9bbjop29c51h',
@@ -19,8 +20,7 @@ const db = mysql.createPool({
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0,
-    ssl: { rejectUnauthorized: false },
-    connectTimeout: 20000
+    ssl: { rejectUnauthorized: false }
 });
 
 // Endpoint de Iniciar Sesión (Login)

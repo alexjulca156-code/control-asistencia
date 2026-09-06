@@ -11,7 +11,7 @@ app.use(express.static('public'));
 
 // Configuración de la conexión a PostgreSQL en Neon
 const db = new Pool({
-    connectionString: process.env.DATABASE_URL || 'postgresql://neondb_owner:npg_hrL4ToRC5yG0@ep-dark-hat-a5lqxwxf-pooler.us-east-2.aws.neon.tech/neondb?sslmode=require',
+    connectionString: process.env.DATABASE_URL || 'postgresql://neondb_owner:npg_hrL4ToRC5yGO@ep-dark-hat-a5lqxwxf-pooler.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require',
     ssl: { rejectUnauthorized: false }
 });
 

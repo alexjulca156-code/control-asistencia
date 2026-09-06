@@ -18,7 +18,8 @@ const db = mysql.createPool({
     port: process.env.DB_PORT || 3306,
     waitForConnections: true,
     connectionLimit: 10,
-    queueLimit: 0
+    queueLimit: 0,
+    ssl: { rejectUnauthorized: false }
 });
 
 // Endpoint de Iniciar Sesión (Login)
@@ -27,7 +28,10 @@ app.post('/api/login', (req, res) => {
     const sql = 'SELECT id, nombre, correo, rol FROM usuarios WHERE correo = ? AND contrasena = ?';
 
     db.query(sql, [correo, contrasena], (err, results) => {
-        if (err) return res.status(500).json({ mensaje: 'Error en el servidor' });
+        if (err) {
+            console.error('Error MySQL en Login:', err);
+            return res.status(500).json({ mensaje: 'Error en el servidor', detalle: err.message });
+        }
         
         if (results.length > 0) {
             return res.json({ mensaje: 'Login exitoso', usuario: results[0] });
@@ -43,7 +47,10 @@ app.put('/api/cambiar-password', (req, res) => {
 
     const sqlVerificar = 'SELECT id FROM usuarios WHERE correo = ? AND contrasena = ?';
     db.query(sqlVerificar, [correo, claveActual], (err, results) => {
-        if (err) return res.status(500).json({ mensaje: 'Error en el servidor' });
+        if (err) {
+            console.error('Error MySQL en verificar password:', err);
+            return res.status(500).json({ mensaje: 'Error en el servidor' });
+        }
 
         if (results.length === 0) {
             return res.status(400).json({ mensaje: 'Correo o contraseña actual incorrectos' });
@@ -51,7 +58,10 @@ app.put('/api/cambiar-password', (req, res) => {
 
         const sqlUpdate = 'UPDATE usuarios SET contrasena = ? WHERE correo = ?';
         db.query(sqlUpdate, [claveNueva, correo], (err, result) => {
-            if (err) return res.status(500).json({ mensaje: 'Error al cambiar la contraseña' });
+            if (err) {
+                console.error('Error MySQL en update password:', err);
+                return res.status(500).json({ mensaje: 'Error al cambiar la contraseña' });
+            }
             return res.json({ mensaje: 'Contraseña actualizada correctamente' });
         });
     });
@@ -61,7 +71,10 @@ app.put('/api/cambiar-password', (req, res) => {
 app.get('/api/usuarios', (req, res) => {
     const sql = 'SELECT id, nombre, correo, contrasena, rol FROM usuarios ORDER BY id DESC';
     db.query(sql, (err, results) => {
-        if (err) return res.status(500).json(err);
+        if (err) {
+            console.error('Error MySQL en obtener usuarios:', err);
+            return res.status(500).json(err);
+        }
         return res.json(results);
     });
 });
@@ -76,7 +89,10 @@ app.post('/api/usuarios', (req, res) => {
 
     const sql = 'INSERT INTO usuarios (nombre, correo, contrasena, rol) VALUES (?, ?, ?, ?)';
     db.query(sql, [nombre, correo, contrasena, rol], (err, result) => {
-        if (err) return res.status(500).json({ mensaje: 'Error al registrar el usuario' });
+        if (err) {
+            console.error('Error MySQL en agregar usuario:', err);
+            return res.status(500).json({ mensaje: 'Error al registrar el usuario' });
+        }
         
         return res.json({ 
             mensaje: 'Usuario creado correctamente', 
@@ -117,7 +133,10 @@ app.delete('/api/usuarios/:id', (req, res) => {
     const { id } = req.params;
     const sql = 'DELETE FROM usuarios WHERE id = ?';
     db.query(sql, [id], (err, result) => {
-        if (err) return res.status(500).json({ mensaje: 'Error al eliminar el usuario' });
+        if (err) {
+            console.error('Error MySQL en eliminar usuario:', err);
+            return res.status(500).json({ mensaje: 'Error al eliminar el usuario' });
+        }
         return res.json({ mensaje: 'Usuario eliminado correctamente' });
     });
 });
@@ -128,7 +147,10 @@ app.post('/api/asistencia', (req, res) => {
 
     const sqlVerificarPracticante = 'SELECT id FROM usuarios WHERE id = ?';
     db.query(sqlVerificarPracticante, [practicante_id], (err, results) => {
-        if (err) return res.status(500).json({ mensaje: 'Error en el servidor' });
+        if (err) {
+            console.error('Error MySQL en verificar practicante:', err);
+            return res.status(500).json({ mensaje: 'Error en el servidor' });
+        }
         
         if (results.length === 0) {
             return res.status(404).json({ mensaje: 'El ID del usuario no existe' });
@@ -136,7 +158,10 @@ app.post('/api/asistencia', (req, res) => {
 
         const sqlVerificarAsistencia = 'SELECT id FROM asistencias WHERE practicante_id = ? AND fecha = CURRENT_DATE()';
         db.query(sqlVerificarAsistencia, [practicante_id], (err, asistencias) => {
-            if (err) return res.status(500).json({ mensaje: 'Error en el servidor' });
+            if (err) {
+                console.error('Error MySQL en verificar asistencia:', err);
+                return res.status(500).json({ mensaje: 'Error en el servidor' });
+            }
 
             if (asistencias.length > 0) {
                 return res.status(400).json({ mensaje: 'El usuario ya registró su entrada el día de hoy' });
@@ -157,7 +182,10 @@ app.post('/api/asistencia', (req, res) => {
             `;
 
             db.query(sqlInsert, [practicante_id], (err, result) => {
-                if (err) return res.status(500).json({ mensaje: 'Error al registrar la asistencia' });
+                if (err) {
+                    console.error('Error MySQL en insertar asistencia:', err);
+                    return res.status(500).json({ mensaje: 'Error al registrar la asistencia' });
+                }
                 return res.json({ mensaje: 'Entrada registrada correctamente', id: result.insertId });
             });
         });
@@ -170,7 +198,10 @@ app.put('/api/asistencia/salida', (req, res) => {
 
     const sqlVerificarEntrada = 'SELECT id, hora_salida FROM asistencias WHERE practicante_id = ? AND fecha = CURRENT_DATE()';
     db.query(sqlVerificarEntrada, [practicante_id], (err, asistencias) => {
-        if (err) return res.status(500).json({ mensaje: 'Error en el servidor' });
+        if (err) {
+            console.error('Error MySQL en verificar entrada para salida:', err);
+            return res.status(500).json({ mensaje: 'Error en el servidor' });
+        }
 
         if (asistencias.length === 0) {
             return res.status(400).json({ mensaje: 'El usuario no ha registrado su entrada hoy' });
@@ -187,7 +218,10 @@ app.put('/api/asistencia/salida', (req, res) => {
         `;
 
         db.query(sqlUpdate, [practicante_id], (err, result) => {
-            if (err) return res.status(500).json({ mensaje: 'Error al registrar la salida' });
+            if (err) {
+                console.error('Error MySQL en registrar salida:', err);
+                return res.status(500).json({ mensaje: 'Error al registrar la salida' });
+            }
             return res.json({ mensaje: 'Salida registrada correctamente' });
         });
     });
@@ -209,7 +243,10 @@ app.get('/api/asistencias', (req, res) => {
         ORDER BY a.id DESC
     `;
     db.query(sql, (err, results) => {
-        if (err) return res.status(500).json(err);
+        if (err) {
+            console.error('Error MySQL en obtener asistencias:', err);
+            return res.status(500).json(err);
+        }
         return res.json(results);
     });
 });
@@ -221,7 +258,10 @@ app.put('/api/asistencias/:id', (req, res) => {
     
     const sql = 'UPDATE asistencias SET hora_entrada = ?, hora_salida = ?, estado = ? WHERE id = ?';
     db.query(sql, [hora_entrada, hora_salida, estado, id], (err, result) => {
-        if (err) return res.status(500).json({ mensaje: 'Error al actualizar el registro' });
+        if (err) {
+            console.error('Error MySQL en editar asistencia:', err);
+            return res.status(500).json({ mensaje: 'Error al actualizar el registro' });
+        }
         return res.json({ mensaje: 'Registro actualizado correctamente' });
     });
 });
@@ -231,7 +271,10 @@ app.delete('/api/asistencias/:id', (req, res) => {
     const { id } = req.params;
     const sql = 'DELETE FROM asistencias WHERE id = ?';
     db.query(sql, [id], (err, result) => {
-        if (err) return res.status(500).json({ mensaje: 'Error al eliminar el registro' });
+        if (err) {
+            console.error('Error MySQL en eliminar asistencia:', err);
+            return res.status(500).json({ mensaje: 'Error al eliminar el registro' });
+        }
         return res.json({ mensaje: 'Registro eliminado correctamente' });
     });
 });
